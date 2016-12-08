@@ -7,7 +7,9 @@
 			 xmlns:uiC="clr-namespace:TecWare.PPSn.Controls;assembly=PPSn.Desktop.UI"
              xmlns:uiL="clr-namespace:TecWare.PPSn.UI"
 			 xmlns:sys="clr-namespace:System;assembly=mscorlib"
-             mc:Ignorable="d" 
+			 xmlns:wpf="clr-namespace:WordCloudCalculator.WPF;assembly=WordCloudCalculator"
+			 xmlns:extractingWordCloudCalculator="clr-namespace:WordCloudCalculator.ExtractingWordCloudCalculator;assembly=WordCloudCalculator"
+			 mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="600">
 
 	<UserControl.Resources>
@@ -522,6 +524,8 @@
 				</Setter.Value>
 			</Setter>
 		</Style>
+		
+		<uiL:WordCloudAppearenceArguments x:Key="WordCloudAppearenceArguments"/>
 
 	</UserControl.Resources>
 
@@ -530,6 +534,7 @@
 			<ColumnDefinition Width="Auto"/>
 			<ColumnDefinition Width="32"/>
 			<ColumnDefinition/>
+			<ColumnDefinition Width="Auto" MinWidth="250"/>
 		</Grid.ColumnDefinitions>
 		<Grid.RowDefinitions>
 			<RowDefinition Height="30"/>
@@ -586,7 +591,7 @@
 			</HeaderedItemsControl.ItemTemplate>
 		</HeaderedItemsControl>
 
-		<TextBox x:Name="PART_SearchBox" Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" HorizontalAlignment="Right" Width="340" Margin="0,12,0,8"
+		<TextBox x:Name="PART_SearchBox" Grid.Column="2" Grid.ColumnSpan="2" Grid.Row="0" Grid.RowSpan="2" HorizontalAlignment="Right" Width="340" Margin="0,12,0,8"
 				 Style="{StaticResource NavigatorSearchBoxStyle}"
 				 Text="{Binding Path=CurrentSearchText, Delay=300, UpdateSourceTrigger=PropertyChanged}" KeyDown="PART_SearchBox_KeyDown"/>
 
@@ -600,8 +605,42 @@
 							 ItemsSource="{Binding Items}"
 							 ScrollViewer.PanningMode="VerticalFirst"
 							 ItemContainerStyle="{StaticResource PPSnDataListControlItemStyle}"/>
-
-		<ItemsControl x:Name="PART_Actions" Grid.Column="2" Grid.Row="4" ItemsSource="{Binding VisibleActions}" IsTabStop="False" >
+		<Grid Grid.Column="3" Grid.Row="3" Margin="5">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="*"/>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="*"/>
+			</Grid.RowDefinitions>
+			<Label Grid.Row="0" Content="TAGS" FontSize="16" FontWeight="Bold"/>
+			<Label Grid.Row="1" Content="Ausgewählte Tags" FontSize="14"/>
+			<ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+				<ItemsControl ItemsSource="{Binding SelectedTags}">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate>
+							<StackPanel Orientation="Horizontal">
+								<Button Content="{Binding Text}" Margin="3" Command="{Binding DataContext.UnSelectTag, ElementName=TerraDbMainWindow}" CommandParameter="{Binding}"/>
+							</StackPanel>
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+					<ItemsControl.ItemsPanel>
+						<ItemsPanelTemplate>
+							<WrapPanel/>
+						</ItemsPanelTemplate>
+					</ItemsControl.ItemsPanel>
+				</ItemsControl>
+			</ScrollViewer>
+			<Label Grid.Row="3" Content="In Beziehung stehende Tags" FontSize="14"/>
+			<wpf:WordCloud 
+				Words="{Binding Tags}" 
+				Grid.Row="4"
+				AppearenceArguments="{StaticResource WordCloudAppearenceArguments}"
+				WordAppearenceCalculationMethodType="extractingWordCloudCalculator:SpiralAppearenceCalculationMethod"
+				/>
+		</Grid>
+		
+		<ItemsControl x:Name="PART_Actions" Grid.Column="2" Grid.Row="4" Grid.ColumnSpan="2" ItemsSource="{Binding VisibleActions}" IsTabStop="False" >
 			<ItemsControl.ItemsPanel>
 				<ItemsPanelTemplate>
 					<DockPanel LastChildFill="False" Margin="0,16,0,0" IsItemsHost="True"/>

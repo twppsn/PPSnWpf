@@ -16,6 +16,7 @@
 using Neo.IronLua;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
@@ -25,6 +26,7 @@ using System.Windows.Input;
 using TecWare.DE.Data;
 using TecWare.PPSn.Data;
 using System.Diagnostics;
+using WordCloudCalculator.Contract.Word;
 
 namespace TecWare.PPSn.UI
 {
@@ -648,6 +650,39 @@ namespace TecWare.PPSn.UI
 			=> Environment.Actions[actionName]?.Execute(this);
 
 		#endregion
+
+
+		#region Tags
+		private List<IWeightedWord> _tags = new List<IWeightedWord>()
+		{
+			new WeightedWord() {Text = "Foo", Weight = 100},
+			new WeightedWord() {Text = "Foo2", Weight = 80},
+			new WeightedWord() {Text = "Foo3", Weight = 70},
+			new WeightedWord() {Text = "Foo4", Weight = 60},
+		};
+		private ObservableCollection<IWeightedWord> _selectedTags = new ObservableCollection<IWeightedWord>()
+		{
+
+			new WeightedWord() {Text = "Foo", Weight = 100},
+			new WeightedWord() {Text = "Foo2", Weight = 80},
+			new WeightedWord() {Text = "Foo3", Weight = 70},
+			new WeightedWord() {Text = "Foo4", Weight = 60},
+		};
+
+		public List<IWeightedWord> Tags
+		{
+			get { return _tags; }
+			set { _tags = value; OnPropertyChanged("Tags");}
+		}
+
+		public ObservableCollection<IWeightedWord> SelectedTags
+		{
+			get { return _selectedTags; }
+			set { _selectedTags = value; OnPropertyChanged("SelectedTags");}
+		}
+
+		#endregion
+
 
 		private void ShowViewsDescription(bool show)
 		{
