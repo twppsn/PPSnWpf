@@ -9,6 +9,7 @@
 			 xmlns:sys="clr-namespace:System;assembly=mscorlib"
 			 xmlns:wpf="clr-namespace:WordCloudCalculator.WPF;assembly=WordCloudCalculator"
 			 xmlns:extractingWordCloudCalculator="clr-namespace:WordCloudCalculator.ExtractingWordCloudCalculator;assembly=WordCloudCalculator"
+			 xmlns:word="clr-namespace:WordCloudCalculator.Contract.Word;assembly=WordCloudCalculator"
 			 mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="600">
 
@@ -534,7 +535,7 @@
 			<ColumnDefinition Width="Auto"/>
 			<ColumnDefinition Width="32"/>
 			<ColumnDefinition/>
-			<ColumnDefinition Width="Auto" MinWidth="250"/>
+			<ColumnDefinition Width="300"/>
 		</Grid.ColumnDefinitions>
 		<Grid.RowDefinitions>
 			<RowDefinition Height="30"/>
@@ -618,9 +619,9 @@
 			<ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
 				<ItemsControl ItemsSource="{Binding SelectedTags}">
 					<ItemsControl.ItemTemplate>
-						<DataTemplate>
+						<DataTemplate DataType="word:IWeightedWord">
 							<StackPanel Orientation="Horizontal">
-								<Button Content="{Binding Text}" Margin="3" Command="{Binding DataContext.UnSelectTag, ElementName=TerraDbMainWindow}" CommandParameter="{Binding}"/>
+								<Button Content="{Binding Text}" Margin="3" Command="{Binding DataContext.UnSelectTagCommand, ElementName=PART_NavigatorGrid}" CommandParameter="{Binding}"/>
 							</StackPanel>
 						</DataTemplate>
 					</ItemsControl.ItemTemplate>
@@ -637,6 +638,7 @@
 				Grid.Row="4"
 				AppearenceArguments="{StaticResource WordCloudAppearenceArguments}"
 				WordAppearenceCalculationMethodType="extractingWordCloudCalculator:SpiralAppearenceCalculationMethod"
+				WordSelectedCommand="{Binding SelectTagCommand}"
 				/>
 		</Grid>
 		

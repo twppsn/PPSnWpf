@@ -436,6 +436,8 @@ namespace TecWare.PPSn.UI
 				views.View.MoveCurrentToPosition(-1);
 			else
 				UpdateCurrentView(null);
+
+			InitializeTags();
 		} // ctor
 
 		private bool FilterAction(object item)
@@ -625,7 +627,7 @@ namespace TecWare.PPSn.UI
 				PpsDataFilterTrueExpression.True;
 
 			// combine the contitions
-			dataSource.Filter = PpsDataFilterExpression.Combine(exprView, exprFilter, exprSearch);
+			dataSource.Filter = PpsDataFilterExpression.Combine(exprView, exprFilter, exprSearch, TagFilter);
 			return dataSource;
 		} // func CreateDataSource
 
@@ -653,36 +655,72 @@ namespace TecWare.PPSn.UI
 
 
 		#region Tags
-		private List<IWeightedWord> _tags = new List<IWeightedWord>()
-		{
-			new WeightedWord() {Text = "Foo", Weight = 100},
-			new WeightedWord() {Text = "Foo2", Weight = 80},
-			new WeightedWord() {Text = "Foo3", Weight = 70},
-			new WeightedWord() {Text = "Foo4", Weight = 60},
-		};
-		private ObservableCollection<IWeightedWord> _selectedTags = new ObservableCollection<IWeightedWord>()
-		{
-
-			new WeightedWord() {Text = "Foo", Weight = 100},
-			new WeightedWord() {Text = "Foo2", Weight = 80},
-			new WeightedWord() {Text = "Foo3", Weight = 70},
-			new WeightedWord() {Text = "Foo4", Weight = 60},
-		};
-
 		public List<IWeightedWord> Tags
 		{
 			get { return _tags; }
-			set { _tags = value; OnPropertyChanged("Tags");}
+			set { _tags = value; OnPropertyChanged("Tags"); }
 		}
 
-		public ObservableCollection<IWeightedWord> SelectedTags
+		public ObservableCollection<IWord> SelectedTags
 		{
 			get { return _selectedTags; }
-			set { _selectedTags = value; OnPropertyChanged("SelectedTags");}
+			set { _selectedTags = value; OnPropertyChanged("SelectedTags"); }
 		}
 
-		#endregion
+		public ICommand SelectTagCommand { get; set; }
 
+		public ICommand UnSelectTagCommand { get; set; }
+
+		public PpsDataFilterExpression TagFilter
+		{
+			get
+			{
+				//TODO Implement filter
+				return PpsDataFilterTrueExpression.True;
+			}
+		}
+
+		private void LoadRealtedTags()
+		{
+			// TODO Load related tags
+		}
+
+		private void InitializeTags()
+		{
+			SelectTagCommand = new RelayCommand(ExecuteSelectTagCommand);
+			UnSelectTagCommand = new RelayCommand(ExecuteUnSelectTagCommand);
+		}
+
+		private void ExecuteUnSelectTagCommand(object o)
+		{
+			var word = o as IWord;
+			if(word == null) return;
+			SelectedTags.Remove(word);
+		}
+
+		private void ExecuteSelectTagCommand(object o)
+		{
+			var word = o as IWord;
+			if(word == null) return;
+			SelectedTags.Add(word);
+		}
+
+		private List<IWeightedWord> _tags = new List<IWeightedWord>()
+		{
+			new WeightedWord {Text = "Foo", Weight = 100},
+			new WeightedWord {Text = "Foo2", Weight = 80},
+			new WeightedWord {Text = "Foo3", Weight = 70},
+			new WeightedWord {Text = "Foo4", Weight = 60},
+		};
+
+		private ObservableCollection<IWord> _selectedTags = new ObservableCollection<IWord>()
+		{
+			new WeightedWord {Text = "Foo", Weight = 100},
+			new WeightedWord {Text = "Foo2", Weight = 80},
+			new WeightedWord {Text = "Foo3", Weight = 70},
+			new WeightedWord {Text = "Foo4", Weight = 60},
+		};
+		#endregion
 
 		private void ShowViewsDescription(bool show)
 		{
