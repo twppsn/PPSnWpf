@@ -26,6 +26,7 @@ using System.Windows.Input;
 using TecWare.DE.Data;
 using TecWare.PPSn.Data;
 using System.Diagnostics;
+using TecWare.DE.Stuff;
 using WordCloudCalculator.Contract.Word;
 
 namespace TecWare.PPSn.UI
@@ -635,6 +636,7 @@ namespace TecWare.PPSn.UI
 		{
 			var dataSource = await Window.Dispatcher.InvokeAsync(CreateDataSource);
 			await items.Reset(dataSource);
+			await LoadRealtedTagsAsync(dataSource.Filter);
 		} // proc RefreshDataAsync
 
 		#endregion
@@ -675,14 +677,26 @@ namespace TecWare.PPSn.UI
 		{
 			get
 			{
-				//TODO Implement filter
-				return PpsDataFilterTrueExpression.True;
+				var expr = SelectedTags.Select(
+					word => new PpsDataFilterCompareExpression("Name", PpsDataFilterCompareOperator.Equal, new PpsDataFilterCompareTextValue(word.Text)));
+				return SelectedTags.Count == 0 ? PpsDataFilterTrueExpression.True : PpsDataFilterExpression.Combine(expr.ToArray());
 			}
 		}
 
-		private void LoadRealtedTags()
+		private async Task LoadRealtedTagsAsync(PpsDataFilterExpression expression)
 		{
-			// TODO Load related tags
+			const int count = 50;
+
+			Tags = await Task.Run(() => Environment.GetViewData(new PpsShellGetList("local.tagcloud") { Filter = expression, Start = 0, Count = count})
+				.Take(count)
+				.Select(row => new WeightedWord()
+				{
+					Text = row.GetProperty("Text", "Anonymous"),
+					Weight = row.GetProperty("Weight", 0d)
+				})
+				.Where(word => SelectedTags.All(sword => sword.Text != word.Text))
+				.Cast<IWeightedWord>()
+				.ToList());
 		}
 
 		private void InitializeTags()
@@ -694,32 +708,24 @@ namespace TecWare.PPSn.UI
 		private void ExecuteUnSelectTagCommand(object o)
 		{
 			var word = o as IWord;
-			if(word == null) return;
+			if (word == null) return;
 			SelectedTags.Remove(word);
+			Task.Run(RefreshDataAsync);
+
 		}
 
 		private void ExecuteSelectTagCommand(object o)
 		{
 			var word = o as IWord;
-			if(word == null) return;
+			if (word == null) return;
 			SelectedTags.Add(word);
+			Task.Run(RefreshDataAsync);
 		}
 
-		private List<IWeightedWord> _tags = new List<IWeightedWord>()
-		{
-			new WeightedWord {Text = "Foo", Weight = 100},
-			new WeightedWord {Text = "Foo2", Weight = 80},
-			new WeightedWord {Text = "Foo3", Weight = 70},
-			new WeightedWord {Text = "Foo4", Weight = 60},
-		};
+		private List<IWeightedWord> _tags = new List<IWeightedWord>();
 
-		private ObservableCollection<IWord> _selectedTags = new ObservableCollection<IWord>()
-		{
-			new WeightedWord {Text = "Foo", Weight = 100},
-			new WeightedWord {Text = "Foo2", Weight = 80},
-			new WeightedWord {Text = "Foo3", Weight = 70},
-			new WeightedWord {Text = "Foo4", Weight = 60},
-		};
+
+		private ObservableCollection<IWord> _selectedTags = new ObservableCollection<IWord>();
 		#endregion
 
 		private void ShowViewsDescription(bool show)

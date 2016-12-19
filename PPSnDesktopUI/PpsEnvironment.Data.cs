@@ -1040,10 +1040,16 @@ namespace TecWare.PPSn
 		{
 			if (arguments.ViewId.StartsWith("local.", StringComparison.OrdinalIgnoreCase)) // it references the local db
 			{
-				if (arguments.ViewId == "local.objects")
-					return CreateObjectFilter(arguments);
-				else
-					throw new ArgumentOutOfRangeException("todo"); // todo: exception
+				switch (arguments.ViewId)
+				{
+					case "local.objects":
+						return CreateObjectFilter(arguments);
+					case "local.tagcloud":
+						return CreateTagCloudFilter(arguments);
+					default:
+						throw new ArgumentOutOfRangeException("todo"); // todo: exception
+
+				}
 			}
 			else
 			{

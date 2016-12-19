@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Data;
+using System.Data.Common;
 using System.Data.SQLite;
 using System.Diagnostics;
 using System.IO;
@@ -1002,7 +1003,7 @@ namespace TecWare.PPSn
 	{
 		private readonly PpsObject baseObj;
 		private readonly List<PpsRevisionDataSet> revisions = new List<PpsRevisionDataSet>();
-		
+
 		internal PpsObjectDataSet(PpsDataSetDefinitionDesktop definition, PpsObject obj)
 			: base(definition, obj.Environment)
 		{
@@ -1097,7 +1098,7 @@ namespace TecWare.PPSn
 		private long pulledRevId;
 		private bool isDocumentChanged;
 		private bool hasData;
-		
+
 		private IPpsObjectData data = null;
 		private readonly PpsObjectTags tags;
 		private readonly PpsObjectLinks links;
@@ -1855,9 +1856,8 @@ namespace TecWare.PPSn
 
 		#region -- class PpsObjectGenerator -----------------------------------------------
 
-		///////////////////////////////////////////////////////////////////////////////
-		/// <summary></summary>
-		private sealed class PpsObjectGenerator : IEnumerable<IDataRow>
+
+		private abstract class AbstractPpsObjectGenerator : IEnumerable<IDataRow>
 		{
 			private const string AllColumns = "s_all";
 			private const string NumberColumns = "s_number";
@@ -1865,21 +1865,25 @@ namespace TecWare.PPSn
 			private const string DateColumns = "s_date";
 			private const int DateClass = 2;
 			private const string ColumnAliasPrefix = "a_";
-			private const string ColumnStaticPrefix = "s_";
+			protected const string ColumnStaticPrefix = "s_";
 			private const string ColumnJoinPrefix = "t_";
 
 			private const string StaticNr = "NR";
 			private const string StaticTyp = "TYP";
 
+			
+
+		
+
 			#region -- class ObjectViewFilterVisitor ----------------------------------------
 
 			///////////////////////////////////////////////////////////////////////////////
 			/// <summary></summary>
-			private sealed class ObjectViewFilterVisitor : PpsDataFilterVisitorSql
+			protected sealed class ObjectViewFilterVisitor : PpsDataFilterVisitorSql
 			{
-				private readonly PpsObjectGenerator owner;
+				private readonly AbstractPpsObjectGenerator owner;
 
-				public ObjectViewFilterVisitor(PpsObjectGenerator owner)
+				public ObjectViewFilterVisitor(AbstractPpsObjectGenerator owner)
 				{
 					this.owner = owner;
 				} // ctor
@@ -1907,7 +1911,7 @@ namespace TecWare.PPSn
 
 			#region -- class ObjectViewColumn -----------------------------------------------
 
-			private enum ObjectViewColumnType
+			protected enum ObjectViewColumnType
 			{
 				All,
 				Number,
@@ -1916,13 +1920,13 @@ namespace TecWare.PPSn
 				Static
 			} // enum ObjectViewColumnType
 
-			private sealed class ObjectViewColumn
+			protected sealed class ObjectViewColumn
 			{
 				private readonly ObjectViewColumnType type;
 				private readonly string keyName; // tag name for the column (meta key)
 				private readonly int classification; // the forced classification for the tag (0 for not present)
 
-				private readonly string columnAlias;  // alias for the where expression (used in where/orderby)
+				private readonly string columnAlias; // alias for the where expression (used in where/orderby)
 				private readonly string joinAlias;
 
 				public ObjectViewColumn(string virtualColumn, int classification)
@@ -2029,17 +2033,23 @@ namespace TecWare.PPSn
 					switch (type)
 					{
 						case ObjectViewColumnType.All:
-							return "LEFT OUTER JOIN ObjectTags AS " + AllColumns + " ON (o.Id = " + AllColumns + ".ObjectId AND " + AllColumns + ".[Class] >= 0)";
+							return "LEFT OUTER JOIN ObjectTags AS " + AllColumns + " ON (o.Id = " + AllColumns + ".ObjectId AND " +
+									AllColumns + ".[Class] >= 0)";
 						case ObjectViewColumnType.Date:
-							return "LEFT OUTER JOIN ObjectTags AS " + DateColumns + " ON (o.Id = " + DateColumns + ".ObjectId AND " + AllColumns + ".[Class] >= 0 AND " + DateColumns + ".class = " + DateClass + ")";
+							return "LEFT OUTER JOIN ObjectTags AS " + DateColumns + " ON (o.Id = " + DateColumns + ".ObjectId AND " +
+									AllColumns + ".[Class] >= 0 AND " + DateColumns + ".class = " + DateClass + ")";
 						case ObjectViewColumnType.Number:
-							return "LEFT OUTER JOIN ObjectTags AS " + NumberColumns + " ON (o.Id = " + NumberColumns + ".ObjectId AND " + AllColumns + ".[Class] >= 0 AND " + NumberColumns + ".class = " + NumberClass + ")";
+							return "LEFT OUTER JOIN ObjectTags AS " + NumberColumns + " ON (o.Id = " + NumberColumns + ".ObjectId AND " +
+									AllColumns + ".[Class] >= 0 AND " + NumberColumns + ".class = " + NumberClass + ")";
 
 						case ObjectViewColumnType.Key:
 							if (classification == 0)
-								return "LEFT OUTER JOIN ObjectTags AS " + joinAlias + " ON (o.Id = " + joinAlias + ".ObjectId AND " + AllColumns + ".[Class] >= 0 AND " + joinAlias + ".Key = '" + keyName + "' COLLATE NOCASE)";
+								return "LEFT OUTER JOIN ObjectTags AS " + joinAlias + " ON (o.Id = " + joinAlias + ".ObjectId AND " + AllColumns +
+										".[Class] >= 0 AND " + joinAlias + ".Key = '" + keyName + "' COLLATE NOCASE)";
 							else
-								return "LEFT OUTER JOIN ObjectTags AS " + joinAlias + " ON (o.Id = " + joinAlias + ".ObjectId AND " + AllColumns + ".[Class] >= 0 AND " + joinAlias + ".Class = " + classification + " AND " + joinAlias + ".Key = '" + keyName + "' COLLATE NOCASE)";
+								return "LEFT OUTER JOIN ObjectTags AS " + joinAlias + " ON (o.Id = " + joinAlias + ".ObjectId AND " + AllColumns +
+										".[Class] >= 0 AND " + joinAlias + ".Class = " + classification + " AND " + joinAlias + ".Key = '" + keyName +
+										"' COLLATE NOCASE)";
 						default:
 							throw new NotSupportedException();
 					}
@@ -2056,14 +2066,14 @@ namespace TecWare.PPSn
 
 			private readonly PpsEnvironment environment;
 			private readonly SQLiteConnection localStoreConnection;
-
+			
 			private List<ObjectViewColumn> columnInfos = new List<ObjectViewColumn>();
 			private string whereCondition = null;
 			private string orderCondition = null;
 			private long limitStart = -1;
 			private long limitCount = -1;
 
-			public PpsObjectGenerator(PpsEnvironment environment, SQLiteConnection localStoreConnection)
+			public AbstractPpsObjectGenerator(PpsEnvironment environment, SQLiteConnection localStoreConnection)
 			{
 				this.environment = environment;
 				this.localStoreConnection = localStoreConnection;
@@ -2097,7 +2107,8 @@ namespace TecWare.PPSn
 				if (orders == null)
 					orderCondition = null;
 				else
-					orderCondition = String.Join(",", from o in orders where !String.IsNullOrEmpty(o.Identifier) select CreateSqlOrder(o.Identifier, o.Negate));
+					orderCondition = String.Join(",",
+						from o in orders where !String.IsNullOrEmpty(o.Identifier) select CreateSqlOrder(o.Identifier, o.Negate));
 			} // proc ApplyOrder
 
 			public void ApplyLimit(long startAt, long count)
@@ -2106,103 +2117,207 @@ namespace TecWare.PPSn
 				this.limitCount = count;
 			} // proc ApplyLimit
 
-			private IEnumerable<ObjectViewColumn> GetAllKeyColumns()
+			protected IEnumerable<ObjectViewColumn> GetAllKeyColumns()
 				=> columnInfos.Where(c => c.Type == ObjectViewColumnType.Key);
 
-			private SQLiteCommand CreateCommand()
+			protected virtual string GenerateCommandSql()
 			{
-				// build complete sql expression
-				var cmd = new StringBuilder();
+				var builder = new SelectStatementFactory();
 
-				cmd.Append("SELECT ");
-
-				// generate static columns
 				for (var i = 0; i < PpsObject.StaticColumns.Length; i++)
 				{
-					cmd.Append(PpsObject.StaticColumnExpressions[i])
-						.Append(" AS ")
-						.Append(ColumnStaticPrefix).Append(PpsObject.StaticColumns[i].Name)
-						.Append(',');
+					builder.SelectFields($"{PpsObject.StaticColumnExpressions[i]} AS {ColumnStaticPrefix}{PpsObject.StaticColumns[i].Name}");
 				}
 
 				// append multi-value column
-				cmd.Append("group_concat(s_all.Key || ':' || s_all.Class || '=' || replace(s_all.Value, char(10), ' '), char(10)) as [Values]");
+				builder.SelectFields(
+					"group_concat(s_all.Key || ':' || s_all.Class || '=' || replace(s_all.Value, char(10), ' '), char(10)) as [Values]");
+
 
 				// generate dynamic columns
 				foreach (var c in GetAllKeyColumns())
 				{
-					cmd.Append(',')
-						.Append(c.CreateWhereExpression());
+					builder.SelectFields(c.CreateWhereExpression());
 				}
 
-				cmd.AppendLine().Append("FROM main.[Objects] o");
+				builder.FromModels("main.[Objects] o");
 
-				// create left outer joins
 				foreach (var c in columnInfos)
 				{
 					if (c.Type != ObjectViewColumnType.Static)
-						cmd.AppendLine().Append(c.CreateLeftOuterJoinExpression());
+						builder.Join(c.CreateLeftOuterJoinExpression());
 				}
 
 				// add the where condition
-				if (!String.IsNullOrEmpty(whereCondition))
-					cmd.AppendLine().Append("WHERE ").Append(whereCondition);
+				if (!string.IsNullOrEmpty(whereCondition))
+					builder.AndFilter(whereCondition);
 
 				// create the group by
-				cmd.AppendLine().Append("GROUP BY ");
-				var first = true;
+
 				foreach (var c in PpsObject.StaticColumns)
 				{
-					if (first)
-						first = false;
-					else
-						cmd.Append(',');
-					cmd.Append(ColumnStaticPrefix).Append(c.Name);
+					builder.GroupBy($"{ColumnStaticPrefix}{c.Name}");
 				}
+
 				foreach (var c in GetAllKeyColumns())
 				{
-					cmd.Append(',');
-					cmd.Append(c.ColumnAlias);
+					builder.GroupBy(c.ColumnAlias);
 				}
 
 				// order by condition
-				cmd.AppendLine();
-				if (String.IsNullOrEmpty(orderCondition))
+				if (string.IsNullOrEmpty(orderCondition))
 					orderCondition = ColumnStaticPrefix + "Id DESC";
-				cmd.Append("ORDER BY ").Append(orderCondition);
+				builder.OrderBy(orderCondition);
 
 				// add limit
-				if (limitStart != -1 || limitCount != -1)
-				{
-					cmd.Append(" LIMIT ").Append(limitCount);
-					if (limitStart > 0)
-						cmd.Append(" OFFSET ").Append(limitStart);
-				}
+				builder.SubSet(limitStart, limitCount);
 
-				var sqlCommand = cmd.ToString();
-				return new SQLiteCommand(sqlCommand, localStoreConnection);
-				/*
-select o.Id, o.ServerId, o.Guid, Typ, o.Nr, o.RemoteRevId, group_concat(t.Key || ':' || t.Class || '='  || t.Value, char(10)) as [Values]
-from Objects o 
-left outer join ObjectTags t on (o.Id = t.ObjectId) 
-left outer join ObjectTags t_liefnr on (o.Id = t_liefnr.ObjectId and t_liefnr.Key = 'LIEFNR')
-left outer join ObjectTags t_kundnr on (o.Id = t_kundnr.ObjectId and t_kundnr.Key = 'KUNDNR')
-left outer join ObjectTags t_number on (o.Id = t_number .ObjectId and t_number.class = 1) 
-left outer join ObjectTags t_all on (o.Id = t_all .ObjectId) 
-where t_liefnr.value is not null and t_number .Value ='50014' and t_all.Value like 'Kleinskunden'
-group by o.Id, o.ServerId, o.Guid, o.Typ, o.Nr, o.RemoteRevId, t_liefnr.value
-order by t_liefnr.value desc
-*/
-			} // func CreateCommand
+				ExtendCommand(builder);
+
+				return builder.ToSql();
+			}
+
+			protected SQLiteCommand CreateCommand() => new SQLiteCommand(GenerateCommandSql(), localStoreConnection);
+
+			protected virtual void ExtendCommand(SelectStatementFactory factory) { }
+
+			protected virtual IEnumerator<IDataRow> GenerateEnumeratorFromCommand(SQLiteCommand command) => new PpsObjectEnumerator(environment, command);
+			
 
 			public IEnumerator<IDataRow> GetEnumerator()
-				=> new PpsObjectEnumerator(environment, CreateCommand());
+			{
+				return GenerateEnumeratorFromCommand(CreateCommand());
+			}
+
 
 			IEnumerator IEnumerable.GetEnumerator()
-				=> GetEnumerator();
+				=> GetEnumerator();	
+
+		}
+
+		private sealed class SelectStatementFactory
+		{
+			private StringBuilder CommonTableExpressions { get; } = new StringBuilder();
+			private StringBuilder Fields { get; } = new StringBuilder();
+			private StringBuilder Models { get; } = new StringBuilder();
+			private StringBuilder Joins { get; } = new StringBuilder();
+			private StringBuilder Groups { get; } = new StringBuilder();
+			private StringBuilder WhereFilter { get;  } = new StringBuilder();
+			private StringBuilder Orders { get; } = new StringBuilder();
+			private long Limit { get; set; } = -1;
+			private long Offset { get; set; } = -1;
+
+			private void AppendListToStringBuilder(StringBuilder builder, IEnumerable<string> items, string seperator = ", ")
+			{
+				if (builder.Length != 0) builder.Append(seperator);
+				builder.Append(string.Join(seperator, items));
+			}
+
+			public SelectStatementFactory With(string definition, string expression)
+			{
+				CommonTableExpressions.Append($"{definition} AS ({expression})");
+				return this;
+			}
+
+			public SelectStatementFactory SelectFields(params string[] fields)
+			{
+				AppendListToStringBuilder(Fields, fields);
+				return this;
+			}
+
+			public SelectStatementFactory FromModels(params string[] models)
+			{
+				AppendListToStringBuilder(Models, models);
+				return this;
+			}
+
+			public SelectStatementFactory Join(params string[] joinStatements)
+			{
+				AppendListToStringBuilder(Joins, joinStatements, " ");
+				return this;
+			}
+
+			public SelectStatementFactory AndFilter(string filter)
+			{
+				if (WhereFilter.Length != 0) WhereFilter.Append(" AND ");
+				WhereFilter.Append(filter);
+				return this;
+			}
+
+			public SelectStatementFactory GroupBy(params string[] fields)
+			{
+				AppendListToStringBuilder(Groups,fields);
+				return this;
+			}
+
+			public SelectStatementFactory OrderBy(params string[] orderConditions)
+			{
+				AppendListToStringBuilder(Orders, orderConditions);
+				return this;
+			}
+
+			public SelectStatementFactory SubSet(long start = 0, long? count = null)
+			{
+				Offset = start;
+				Limit = count ?? -1;
+				return this;
+			}
+
+			public string ToSql()
+			{
+					var cmd = new StringBuilder();
+					if (CommonTableExpressions.Length != 0)
+					{
+						cmd.Append("WITH ");
+						cmd.Append(CommonTableExpressions);
+					}
+					cmd.Append(" SELECT ");
+					cmd.Append(Fields);
+					cmd.Append(" FROM ");
+					cmd.Append(Models);
+
+					if (Joins.Length != 0)
+					{
+						cmd.Append(" ").Append(Joins);
+					}
+
+					if (WhereFilter.Length != 0)
+					{
+						cmd.Append(" WHERE ").Append(WhereFilter);
+					}
+					if (Groups.Length != 0)
+					{
+						cmd.Append(" GROUP BY ").Append(Groups);
+					}
+					if (Orders.Length != 0)
+					{
+						cmd.Append(" ORDER BY ").Append(Orders);
+					}
+					if (Limit >= 0)
+					{
+						cmd.Append(" LIMIT ").Append(Limit);
+					}
+
+					if (Offset > 0)
+					{
+						cmd.Append(" OFFSET ").Append(Offset);
+					}
+
+					return cmd.ToString();
+			}
+		}
+
+		///////////////////////////////////////////////////////////////////////////////
+		/// <summary></summary>
+		private sealed class PpsObjectGenerator : AbstractPpsObjectGenerator
+		{
+			public PpsObjectGenerator(PpsEnvironment environment, SQLiteConnection localStoreConnection) : base(environment, localStoreConnection)
+			{
+			}
 		} // class PpsObjectGenerator
 
 		#endregion
+
 
 		private IEnumerable<IDataRow> CreateObjectFilter(PpsShellGetList arguments)
 		{
@@ -2215,6 +2330,51 @@ order by t_liefnr.value desc
 			return gn;
 		} // func CreateObjectFilter
 
+
+
+		#endregion
+
+		#region TagCloud
+
+
+		private sealed class WordCloudObjectGenerator : AbstractPpsObjectGenerator
+		{
+			protected override void ExtendCommand(SelectStatementFactory factory)
+			{
+				factory.SelectFields("s_all.Value as s_Name");
+				factory.AndFilter("s_all.Key = 'Name'");
+			}
+
+			protected override string GenerateCommandSql()
+			{
+				return new SelectStatementFactory()
+					.With("CTR_OBJECTS", base.GenerateCommandSql())
+					.FromModels("CTR_OBJECTS AS co")
+					.Join("JOIN ObjectTags as ot ON ot.Value = co.s_Name")
+					.SelectFields("co.s_Name as Text", "COUNT(ot.Value) as Weight")
+					.GroupBy("Text")
+					.OrderBy("Weight DESC")
+					.ToSql();
+			}
+
+			protected override IEnumerator<IDataRow> GenerateEnumeratorFromCommand(SQLiteCommand command) => new DbRowEnumerator(command);
+			
+
+			public WordCloudObjectGenerator(PpsEnvironment environment, SQLiteConnection localStoreConnection) : base(environment, localStoreConnection)
+			{
+			}
+		}
+
+
+		private IEnumerable<IDataRow> CreateTagCloudFilter(PpsShellGetList arguments)
+		{
+			var gn = new WordCloudObjectGenerator(this, LocalConnection);
+
+			gn.ApplyFilter(arguments.Filter);
+			gn.ApplyLimit(arguments.Start, arguments.Count);
+
+			return gn;
+		} // func CreateTagCloudFilter
 		#endregion
 
 		/// <summary>Create a new object.</summary>
