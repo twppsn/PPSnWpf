@@ -75,7 +75,7 @@ namespace TecWare.PPSn
 		private async Task RefreshDefaultResourcesAsync()
 		{
 			// update the resources, load a server site resource dictionary
-			var t = await GetXmlDocumentAsync("wpf/default.xaml", true, true);
+			var t = await GetXmlDocumentAsync("wpf/styles.xaml", true, true);
 			if (t == null)
 				return;
 
@@ -133,7 +133,18 @@ namespace TecWare.PPSn
 			if (xResources != null)
 			{
 				foreach (var cur in xResources.Elements())
-					Dispatcher.Invoke(() => UpdateResource(cur.GetAttribute(StuffUI.xnKey, String.Empty), cur.ToString(), parserContext));
+					Dispatcher.Invoke(() =>
+					{
+						try
+						{
+							UpdateResource(cur.GetAttribute(StuffUI.xnKey, String.Empty), cur.ToString(), parserContext);
+						}
+						catch (Exception e)
+						{
+							Debug.Print(e.ToString()); // todo: exception
+						}
+					}
+			);
 			}
 		} // proc UpdateResources
 

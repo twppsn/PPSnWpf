@@ -399,9 +399,9 @@ namespace TecWare.PPSn
 		{
 			protected readonly SQLiteCommand command;
 
-			public TagCommand(SQLiteTransaction trans)
+			public TagCommand(SQLiteTransaction trans, SQLiteConnection connection)
 			{
-				this.command = trans.Connection.CreateCommand();
+				this.command = connection.CreateCommand();
 				this.command.Transaction = trans;
 			} // ctor
 
@@ -421,7 +421,7 @@ namespace TecWare.PPSn
 			private readonly SQLiteParameter keyParameter;
 
 			public TagSelectByKeyCommand(SQLiteTransaction trans)
-				: base(trans)
+				: base(trans, trans.Connection)
 			{
 				this.command.CommandText = "SELECT [Id] FROM main.[ObjectTags] WHERE [ObjectId] = @ObjectId AND [Key] = @Key;";
 
@@ -456,8 +456,8 @@ namespace TecWare.PPSn
 		{
 			private readonly SQLiteParameter objectIdParameter;
 
-			public TagSelectCommand(SQLiteTransaction trans, bool visibleOnly)
-				: base(trans)
+			public TagSelectCommand(SQLiteTransaction trans, SQLiteConnection connection, bool visibleOnly)
+				: base(trans, connection)
 			{
 				this.command.CommandText =
 					"SELECT [Id], [Key], [Class], [Value], [SyncToken] FROM main.[ObjectTags] WHERE [ObjectId] = @ObjectId" + (visibleOnly ? " AND [Class] >= 0" : ";");
@@ -477,7 +477,7 @@ namespace TecWare.PPSn
 					{
 						var k = r.GetString(1);
 						var t = r.GetInt32(2);
-						var v = r.GetString(3);
+						var v = r.IsDBNull(3) ? null : r.GetString(3);
 						yield return new Tuple<long, PpsObjectTag>(r.GetInt64(0), new PpsObjectTag(k, (PpsObjectTagClass)t, v, r.GetInt64(4)));
 					}
 				}
@@ -497,7 +497,7 @@ namespace TecWare.PPSn
 			private readonly SQLiteParameter syncTokenParameter;
 
 			public TagInsertCommand(SQLiteTransaction trans)
-				: base(trans)
+				: base(trans, trans.Connection)
 			{
 				this.command.CommandText = "INSERT INTO main.[ObjectTags] ([ObjectId], [Key], [Class], [Value], [SyncToken]) values (@ObjectId, @Key, @Class, @Value, @SyncToken);";
 				this.objectIdParameter = command.Parameters.Add("@ObjectId", DbType.Int64);
@@ -537,7 +537,7 @@ namespace TecWare.PPSn
 			private readonly SQLiteParameter syncTokenParameter;
 
 			public TagUpdateCommand(SQLiteTransaction trans)
-				: base(trans)
+				: base(trans, trans.Connection)
 			{
 				this.command.CommandText = "UPDATE main.[ObjectTags] SET [Class] = @Class, [Value] = @Value, [SyncToken] = @syncToken where [Id] = @Id;";
 
@@ -571,7 +571,7 @@ namespace TecWare.PPSn
 			private readonly SQLiteParameter idParameter;
 
 			public TagDeleteCommand(SQLiteTransaction trans)
-				: base(trans)
+				: base(trans, trans.Connection)
 			{
 				this.command.CommandText = "DELETE FROM main.[ObjectTags] WHERE [Id] = @Id;";
 
@@ -648,12 +648,8 @@ namespace TecWare.PPSn
 
 		internal void RefreshTags(SQLiteTransaction transaction = null)
 		{
-			using (var trans = new PpsNestedDatabaseTransaction(parent.Environment.LocalConnection, transaction))
-			using (var cmd = new TagSelectCommand(trans.Transaction, true))
-			{
+			using (var cmd = new TagSelectCommand(transaction, parent.Environment.LocalConnection, true))
 				RefreshTags(cmd.Select(parent.LocalId).Select(c => c.Item2));
-				trans.Rollback();
-			}
 		} // proc RefreshTags
 
 		internal void CheckTagsLoaded(SQLiteTransaction transaction)
@@ -731,7 +727,7 @@ namespace TecWare.PPSn
 			// update tags
 			using (var trans = new PpsNestedDatabaseTransaction(parent.Environment.LocalConnection, transaction))
 			{
-				using (var selectTags = new TagSelectCommand(trans.Transaction, false))
+				using (var selectTags = new TagSelectCommand(trans.Transaction, trans.Connection, false))
 				using (var updateTag = new TagUpdateCommand(trans.Transaction))
 				using (var insertTag = new TagInsertCommand(trans.Transaction))
 				using (var deleteTag = new TagDeleteCommand(trans.Transaction))
@@ -775,7 +771,7 @@ namespace TecWare.PPSn
 				// refresh tags
 				if (refreshTags)
 				{
-					using (var selectTags = new TagSelectCommand(trans.Transaction, true))
+					using (var selectTags = new TagSelectCommand(trans.Transaction, trans.Connection, true))
 						RefreshTags(selectTags.Select(parent.LocalId).Select(c => c.Item2));
 				}
 				else
@@ -1020,7 +1016,10 @@ namespace TecWare.PPSn
 						throw new ArgumentNullException("Data is missing.");
 
 					using (var xml = XmlReader.Create(src, Procs.XmlReaderSettings))
-						Read(XDocument.Load(xml).Root);
+					{
+						var xData = XDocument.Load(xml).Root;
+						await Environment.Dispatcher.InvokeAsync(() => Read(xData));
+					}
 				}
 				docTrans?.Commit();
 			}
@@ -1030,24 +1029,34 @@ namespace TecWare.PPSn
 
 		public async Task CommitAsync(SQLiteTransaction trans = null)
 		{
-			using (var transaction = new PpsNestedDatabaseTransaction(Environment.LocalConnection, trans))
+			try
 			{
-				// update data
-				await baseObj.SaveRawDataAsync(transaction.Transaction,
-					 dst =>
-					 {
-						 var settings = Procs.XmlWriterSettings;
-						 settings.CloseOutput = false;
-						 using (var xml = XmlWriter.Create(dst, settings))
-							 Write(xml);
-					 }
-					);
+				using (var transaction = new PpsNestedDatabaseTransaction(Environment.LocalConnection, trans))
+				{
+					// update data
+					await baseObj.SaveRawDataAsync(transaction.Transaction,
+						 dst =>
+						 {
+							 var settings = Procs.XmlWriterSettings;
+							 settings.CloseOutput = false;
+							 using (var xml = XmlWriter.Create(dst, settings))
+								 Write(xml);
+						 }
+						);
 
-				// update tags
-				baseObj.Tags.Update(GetAutoTags().ToList(), transaction: transaction.Transaction);
+					// update tags
+					baseObj.Tags.Update(GetAutoTags().ToList(), transaction: transaction.Transaction);
 
-				transaction.Commit();
+					transaction.Commit();
+				}
 			}
+			catch (Exception)
+			{
+				throw;
+			}
+
+			// mark not dirty anymore
+			ResetDirty();
 		} // proc CommitAsync
 
 		public Task PushAsync(SQLiteTransaction transaction = null)
@@ -1334,9 +1343,9 @@ namespace TecWare.PPSn
 				{
 					if (!hasData) // first data pull
 					{
-						if (asyncPullData)
-							Environment.SynchronizationWorker.EnqueuePull(this);
-						else
+						//if (asyncPullData)
+						//	Environment.SynchronizationWorker.EnqueuePull(this);
+						//else
 							await PullDataAsync(transaction);
 					}
 					else // todo: check for changes
@@ -2053,7 +2062,7 @@ namespace TecWare.PPSn
 						default:
 							throw new NotSupportedException();
 					}
-				} //func CreateLeftOuterJoinExpression
+				} // func CreateLeftOuterJoinExpression
 
 				public string KeyName => keyName;
 				public int Classification => classification;
@@ -2588,7 +2597,7 @@ namespace TecWare.PPSn
 				using (var e = GetViewData(
 					new PpsShellGetList("dbo.objects")
 					{
-						Filter = new PpsDataFilterCompareExpression("Guid", PpsDataFilterCompareOperator.Equal, new PpsDataFilterCompareTextValue(guid.ToString("G")))
+						Filter = new PpsDataFilterCompareExpression("Guid", PpsDataFilterCompareOperator.Equal, new PpsDataFilterCompareTextValue(guid.ToString("N")))
 					}).GetEnumerator())
 				{
 					if (e.MoveNext())

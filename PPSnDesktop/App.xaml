@@ -6,18 +6,17 @@
 			 xmlns:uim="clr-namespace:TecWare.PPSn.UI"
 			 xmlns:uiC="clr-namespace:TecWare.PPSn.Controls;assembly=PPSn.Desktop.UI"
 			 xmlns:env="clr-namespace:TecWare.PPSn"
-       ShutdownMode="OnLastWindowClose">
+			 ShutdownMode="OnLastWindowClose">
 	<Application.Resources>
 		<ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/PPSn.Desktop.UI;component/UI/Themes/Theme1.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/PPSn.Desktop.UI;component/UI/UI.xaml" />
-				<ResourceDictionary Source="Local/Templates.xaml" />
 				<ResourceDictionary Source="/WordCloudCalculator;component/WPF/WordCloudGui.xaml"/>
 			</ResourceDictionary.MergedDictionaries>
 
 			<ui:PpsStringConverter x:Key="StringConverter" />
-			
-        </ResourceDictionary>
+			<ui:PpsMultiLineStringConverter x:Key="MultiLineStringConverter" />
+											
+		</ResourceDictionary>
 	</Application.Resources>
 </Application>

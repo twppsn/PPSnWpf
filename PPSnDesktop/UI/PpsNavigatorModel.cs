@@ -734,6 +734,7 @@ namespace TecWare.PPSn.UI
 				return;
 			viewsShowDescription = show;
 			OnPropertyChanged(nameof(ViewsShowDescription));
+			windowModel.ShowSideBarBackground();
 		} // proc ShowViewsDescription
 
 		protected override object OnIndex(object key)

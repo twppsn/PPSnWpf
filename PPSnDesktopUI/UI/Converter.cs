@@ -22,6 +22,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using Neo.IronLua;
+using TecWare.DE.Stuff;
 
 namespace TecWare.PPSn.UI
 {
@@ -55,21 +56,24 @@ namespace TecWare.PPSn.UI
 	public sealed class PpsStringConverter : IValueConverter
 	{
 		public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-			=> value == null ? String.Empty : String.Format((string)parameter ?? Text, value);
+			=> value == null ? String.Empty : String.Format((string)parameter ?? Text, RemoveNewLines(value));
 
 		object IValueConverter.ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
 		{
 			throw new NotSupportedException();
 		} // func ConvertBack
 
+		private string RemoveNewLines(object value)
+			=> value.ToString().Replace(Environment.NewLine, " ");
+
 		public string Text { get; set; } = "{0}";
 	} // class PpsStringConverter
 
 	#endregion
 
-	#region -- class MultiLineStringConverter -------------------------------------------
+	#region -- class PpsMultiLineStringConverter ----------------------------------------
 
-	public sealed class MultiLineStringConverter : IValueConverter
+	public sealed class PpsMultiLineStringConverter : IValueConverter
 	{
 		public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
 			=> value == null ? String.Empty : RemoveNewLines(value);
@@ -80,18 +84,76 @@ namespace TecWare.PPSn.UI
 		} // func ConvertBack
 
 		private string RemoveNewLines(object value)
-		{
-			var txt = value.ToString();
-			if (String.IsNullOrEmpty(txt))
-				return String.Empty;
-			if (!txt.Contains(Environment.NewLine))
-				return txt;
+			=> value.ToString().Replace(Environment.NewLine, " ");
 
-			var lines = txt.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-			return string.Join(" ", lines);
-		} // func RemoveNewLines
-	} // class MultiLineStringConverter
+	} // class PpsMultiLineStringConverter
 
 	#endregion
 
+	#region -- class PpsSingleLineConverter ---------------------------------------------
+
+	///////////////////////////////////////////////////////////////////////////////
+	/// <summary></summary>
+	public sealed class PpsSingleLineConverter : IValueConverter
+	{
+		/// <summary></summary>
+		/// <param name="value"></param>
+		/// <param name="targetType"></param>
+		/// <param name="parameter"></param>
+		/// <param name="culture"></param>
+		/// <returns></returns>
+		public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+		{
+			if (value == null)
+				return null;
+
+			var ellipse = false;
+			var txt = value.ToString().TrimStart('\n', ' ', '\r');
+			var p = txt.IndexOf('\n');
+
+			if (p >= 0)
+			{
+				txt = txt.Substring(0, p).TrimEnd();
+				ellipse = true;
+			}
+
+			if (parameter != null)
+			{
+				var maxLen = Procs.ChangeType<int>(parameter);
+				if (maxLen > 1 && txt.Length > maxLen)
+				{
+					txt = txt.Substring(0, maxLen);
+					ellipse = true;
+				}
+			}
+
+			if (ellipse)
+				txt += "...";
+
+			return txt;
+		} // func Convert
+
+		object IValueConverter.ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+		{
+			throw new NotSupportedException();
+		} // func ConvertBack
+	} // class PpsSingleLineConverter
+
+	#endregion
+
+	public sealed class PpsCommandParameterPassthroughConverter : IMultiValueConverter
+	{
+		public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+		{
+			return values.Clone();
+		} // func Convert
+
+		public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+		{
+			throw new NotSupportedException();
+		}
+
+	}
 }
+
+

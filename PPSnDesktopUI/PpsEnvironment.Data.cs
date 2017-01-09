@@ -615,13 +615,18 @@ namespace TecWare.PPSn
 				else if (arguments.Count > 0)
 				{
 					var testArguments = HttpUtility.ParseQueryString(testPath.Substring(pos + 1));
+					var failed = false;
 					foreach (var c in arguments.AllKeys)
 					{
 						var testValue = testArguments[c];
 						if (testValue == null || String.Compare(testValue, arguments[c], StringComparison.OrdinalIgnoreCase) != 0)
-							continue;
+						{
+							failed = true;
+							break;
+						}
 					}
-					return true; // all arguments are fit
+					if (!failed)
+						return true; // all arguments are fit
 				}
 			}
 			return false;
@@ -649,8 +654,8 @@ namespace TecWare.PPSn
 				return false;
 			}
 
-			string resultContentType = null;
-			Stream resultData = null;
+			var resultContentType = (string)null;
+			var resultData = (Stream)null;
 			try
 			{
 				using (var command = new SQLiteCommand("SELECT [Path], [OnlineMode], [ContentType], [ContentEncoding], [Content] FROM [main].[OfflineCache] WHERE substr([Path], 1, length(@path)) = @path;", localConnection))
@@ -1095,6 +1100,7 @@ namespace TecWare.PPSn
 		/// <summary>Internal Uri of the environment.</summary>
 		public Uri BaseUri => baseUri;
 		/// <summary>Is <c>true</c>, if the application is online.</summary>
+		[LuaMember]
 		public bool IsOnline
 		{
 			get { return isOnline; }
