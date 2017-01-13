@@ -29,6 +29,7 @@ using System.Windows.Threading;
 using System.Xml.Linq;
 using Neo.IronLua;
 using TecWare.DE.Networking;
+using TecWare.DE.Stuff;
 
 namespace TecWare.PPSn.UI
 {
@@ -139,9 +140,7 @@ namespace TecWare.PPSn.UI
 		{
 			if (disposing)
 			{
-				if (disposing)
-					Environment.RemoveIdleAction(this);
-
+				Environment.RemoveIdleAction(this);
 				CallMemberDirect("Dispose", new object[0], throwExceptions: false);
 			}
 		} // proc Dispose
@@ -341,13 +340,14 @@ namespace TecWare.PPSn.UI
 			var factory = collection as ICollectionViewFactory;
 			if (factory != null)
 				return factory.CreateView();
-
-			if (collection is IBindingList)
+			else if (collection is IBindingList)
 				return new BindingListCollectionView((IBindingList)collection);
 			else if (collection is IList)
 				return new ListCollectionView((IList)collection);
 			else if (collection is IEnumerable)
 				return new CollectionView((IEnumerable)collection);
+			else if (Lua.RtInvokeable(collection))
+				return new CollectionView(new LuaFunctionEnumerator(collection));
 			else
 				throw new ArgumentException("collection is no enumerable.");
 		} // func LuaCreateView
@@ -464,7 +464,10 @@ namespace TecWare.PPSn.UI
 			forceUpdateSource = false;
 
 			foreach (var expr in BindingOperations.GetSourceUpdatingBindings(Control))
-				expr.UpdateSource();
+			{
+				if (!expr.HasError)
+					expr.UpdateSource();
+			}
 		} // proc UpdateSources
 
 		bool IPpsIdleAction.OnIdle(int elapsed)

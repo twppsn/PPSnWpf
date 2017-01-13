@@ -10,7 +10,7 @@
 			 xmlns:wpf="clr-namespace:WordCloudCalculator.WPF;assembly=WordCloudCalculator"
 			 xmlns:extractingWordCloudCalculator="clr-namespace:WordCloudCalculator.ExtractingWordCloudCalculator;assembly=WordCloudCalculator"
 			 xmlns:word="clr-namespace:WordCloudCalculator.Contract.Word;assembly=WordCloudCalculator"
-			 mc:Ignorable="d" 
+             mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="600">
 
 	<UserControl.Resources>
@@ -603,10 +603,10 @@
 				 IsSynchronizedWithCurrentItem="True"
 				 Style="{StaticResource NavigatorViewsListBoxStyle}"/>
 
-		<uiC:DataListControl x:Name="PART_Items" Grid.Column="2" Grid.Row="3" Style="{StaticResource PPSnListBoxStyle}" FontSize="14" SnapsToDevicePixels="True"
-							 AlternationCount="2" IsSynchronizedWithCurrentItem="True"
+		<uiC:DataListControl x:Name="PART_Items" Grid.Column="2" Grid.Row="3" AlternationCount="2" IsSynchronizedWithCurrentItem="True" FontSize="14" SnapsToDevicePixels="True"
 							 ItemsSource="{Binding Items}"
 							 ScrollViewer.PanningMode="VerticalFirst"
+							 Style="{StaticResource PPSnListBoxStyle}"
 							 ItemContainerStyle="{StaticResource PPSnDataListControlItemStyle}"/>
 		<Grid Grid.Column="3" Grid.Row="3" Margin="5">
 			<Grid.RowDefinitions>
@@ -644,7 +644,7 @@
 				/>
 		</Grid>
 		
-		<ItemsControl x:Name="PART_Actions" Grid.Column="2" Grid.Row="4" Grid.ColumnSpan="2" ItemsSource="{Binding VisibleActions}" IsTabStop="False" >
+		<ItemsControl x:Name="PART_Actions" Grid.Column="2" Grid.Row="4" ItemsSource="{Binding VisibleActions}" IsTabStop="False" >
 			<ItemsControl.ItemsPanel>
 				<ItemsPanelTemplate>
 					<DockPanel LastChildFill="False" Margin="0,16,0,0" IsItemsHost="True"/>

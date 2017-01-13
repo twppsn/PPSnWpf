@@ -514,7 +514,7 @@ namespace TecWare.PPSn
 		/// <param name="defaultResult"></param>
 		/// <returns></returns>
 		[LuaMember("msgbox")]
-		private MessageBoxResult LuaMsgBox(string text, string caption, MessageBoxButton button = MessageBoxButton.OK, MessageBoxImage image = MessageBoxImage.Information, MessageBoxResult defaultResult = MessageBoxResult.OK)
+		public MessageBoxResult MsgBox(string text, string caption, MessageBoxButton button = MessageBoxButton.OK, MessageBoxImage image = MessageBoxImage.Information, MessageBoxResult defaultResult = MessageBoxResult.OK)
 		{
 			return MessageBox.Show(text, caption ?? "Information", button, image, defaultResult);
 		} // proc LuaMsgBox
@@ -621,7 +621,7 @@ namespace TecWare.PPSn
 
 		public static PpsLuaTask RunTask(IPpsLuaTaskParent parent, object func, CancellationToken cancellationToken , params object[] args)
 		{
-			CancellationTokenSource cancellationSource  = null;
+			var cancellationSource = (CancellationTokenSource)null;
 			if (cancellationToken == CancellationToken.None) // find a source or a token in the arguments
 			{
 				for (var i = 0; i < args.Length; i++)
